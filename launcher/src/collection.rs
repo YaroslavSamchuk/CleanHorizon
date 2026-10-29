@@ -265,6 +265,7 @@ impl Launcher {
     }
 
     /// Settings' data collection: a switch per kind, then the player's data.
+    #[allow(dead_code)]
     pub(crate) fn collection_section(&mut self, cx: &mut Context<Self>) -> Div {
         let t = self.theme;
         let consent = self.collection.consent.clone();
