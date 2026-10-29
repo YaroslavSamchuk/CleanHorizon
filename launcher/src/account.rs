@@ -784,8 +784,26 @@ pub enum Player {
     GameName,
 }
 
+#[allow(dead_code)]
 const OFFLINE_NEEDS_OWNER: &str =
     "Offline names need a Microsoft account that owns Minecraft: Java Edition in the launcher.";
+
+#[allow(dead_code)]
+const _LEGACY_STRINGS: &[&str] = &[
+    "Playing offline",
+    "Another account",
+    "Sign out",
+    "Sign in with Microsoft",
+    "Online servers need a Microsoft account.",
+    "Play offline under another name, and switch from the top bar. Online servers don't take offline names.",
+    "Microsoft account · signed in",
+    "Play offline",
+    "Horizon needs a Microsoft account that owns Minecraft: Java Edition, like other launchers. It also plays online servers with your name and skin.",
+    "Add another account.",
+    "Accounts…",
+    "HIDE",
+    "Microsoft account · plays",
+];
 
 /// The secrets an account keeps in `store`, if it still has them there.
 fn secrets_in(store: &dyn SecretStore, uuid: &str) -> Option<Secrets> {
