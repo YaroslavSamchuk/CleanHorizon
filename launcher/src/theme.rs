@@ -8,6 +8,7 @@ use horizon_launcher::themes::Accent;
 use horizon_theme as tokens;
 use std::time::Duration;
 
+#[allow(unused_imports)]
 pub use tokens::{Step, BODY, CAPTION, DISPLAY, HEADING, LABEL, MICRO, TITLE, UI, WORDMARK};
 pub const FONT: &str = tokens::FONT;
 pub const MONO: &str = tokens::MONO;
@@ -31,6 +32,7 @@ pub const PAGE_GUTTER: f32 = 32.;
 pub const QUICK: Duration = tokens::QUICK.duration();
 pub const MOVE: Duration = tokens::MOVE.duration();
 pub const ENTER: Duration = tokens::ENTER.duration();
+#[allow(dead_code)]
 pub const STAGGER: Duration = tokens::STAGGER;
 
 #[derive(Clone, Copy)]

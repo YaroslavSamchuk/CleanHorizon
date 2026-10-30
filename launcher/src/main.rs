@@ -128,6 +128,15 @@ const OPENING_HOLD: Duration = horizon_theme::OPENING_HOLD;
 const OPENING_MAX: Duration = horizon_theme::OPENING_MAX;
 const OPENING_REVEAL: Duration = horizon_theme::OPENING_REVEAL;
 
+const EMBLEM_WIDTH: f32 = 242.;
+const EMBLEM_HEIGHT: f32 = 401.;
+static EMBLEM: std::sync::LazyLock<std::sync::Arc<gpui::Image>> = std::sync::LazyLock::new(|| {
+    std::sync::Arc::new(gpui::Image::from_bytes(
+        gpui::ImageFormat::Png,
+        include_bytes!("../assets/upa-emblem.png").to_vec(),
+    ))
+});
+
 /// The phase of the opening at one moment: how far the reveal has gone, 0 to 1.
 struct Opening {
     /// Set on the first frame, so a slow start does not eat into the hold.
@@ -3915,25 +3924,21 @@ impl Render for Launcher {
             root = root.child(self.owner_screen(cx));
         }
         if let Some(opening) = &self.opening {
-            // The wordmark arrives letter by letter, then gives way to the launcher; a click or
+            // The emblem arrives with a smooth rise and fade, then gives way to the launcher; a click or
             // a key skips ahead.
             let gone = 1. - ease_out_cubic(reveal / 0.6);
-            let word = div()
-                .flex()
-                .font_family(theme::PIXEL)
-                .text_size(px(theme::WORDMARK.px * 0.5))
-                .line_height(px(theme::WORDMARK.px * 0.5))
-                .font_weight(FontWeight::BOLD)
-                .text_color(t.ink)
-                .children("HORIZON".chars().enumerate().map(|(i, c)| {
-                    let at = held - i as f32 * theme::STAGGER.as_secs_f32() * 1.5;
-                    let p = ease_out_cubic(at / theme::ENTER.as_secs_f32());
-                    div()
-                        .relative()
-                        .opacity(p)
-                        .top(px(theme::RISE * 2. * (1. - p)))
-                        .child(c.to_string())
-                }));
+            let p = ease_out_cubic((held / (theme::ENTER.as_secs_f32() * 1.5)).clamp(0., 1.));
+            let emblem_height = 200.;
+            let emblem_width = (emblem_height * EMBLEM_WIDTH / EMBLEM_HEIGHT).round();
+            let emblem = div()
+                .relative()
+                .opacity(p)
+                .top(px(theme::RISE * 3. * (1. - p)))
+                .child(
+                    gpui::img(EMBLEM.clone())
+                        .w(px(emblem_width))
+                        .h(px(emblem_height)),
+                );
             root = root.child(
                 div()
                     .id("opening")
@@ -3952,7 +3957,7 @@ impl Render for Launcher {
                             .relative()
                             .top(px(-24. * (1. - gone)))
                             .opacity(gone)
-                            .child(word),
+                            .child(emblem),
                     )
                     .when(reveal == 0., |d| {
                         d.on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
