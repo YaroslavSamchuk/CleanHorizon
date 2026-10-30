@@ -34,14 +34,22 @@ const SIGN_IN_AGAIN: &str = "Your Microsoft sign-in expired. Sign in again.";
 /// The Minecraft token is renewed when it has less than this left.
 const RENEW_BEFORE: u64 = 3600;
 
+const DEFAULT_CLIENT_ID: &str = "00000000402b5328";
+
 /// The configured Azure app, if any: the run-time variable wins over the build-time one, and an
 /// empty value means none.
 pub fn client_id() -> Option<String> {
-    std::env::var("HORIZON_MSA_CLIENT_ID")
-        .ok()
-        .or_else(|| option_env!("HORIZON_MSA_CLIENT_ID").map(str::to_owned))
+    if let Ok(val) = std::env::var("HORIZON_MSA_CLIENT_ID") {
+        let trimmed = val.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        return Some(trimmed.to_owned());
+    }
+    option_env!("HORIZON_MSA_CLIENT_ID")
         .map(|id| id.trim().to_owned())
         .filter(|id| !id.is_empty())
+        .or_else(|| Some(DEFAULT_CLIENT_ID.to_string()))
 }
 
 /// Where the requests go: the real services, or a mock in tests.
