@@ -9,25 +9,9 @@ echo               Horizon Launcher (Clean & Free)
 echo ========================================================
 echo.
 
-:: Add cargo to PATH if installed in user profile
-if exist "%USERPROFILE%\.cargo\bin\cargo.exe" (
-    set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
-)
-
-:: Check if Rust / Cargo is available
-where cargo >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Rust / Cargo is not found!
-    echo.
-    echo Rust is being installed or can be installed with:
-    echo   winget install Rustlang.Rustup
-    echo.
-    pause
-    exit /b 1
-)
-
-:: Locate precompiled binary if already built
+:: 1. Locate precompiled binary if already built or downloaded
 set "EXE_PATH="
+if exist "%~dp0horizon-launcher.exe" set "EXE_PATH=%~dp0horizon-launcher.exe"
 if exist "launcher\target\release\horizon-launcher.exe" set "EXE_PATH=launcher\target\release\horizon-launcher.exe"
 if exist "target\release\horizon-launcher.exe" set "EXE_PATH=target\release\horizon-launcher.exe"
 
@@ -37,6 +21,26 @@ if defined EXE_PATH (
         start "" "!EXE_PATH!"
         exit /b 0
     )
+)
+
+:: 2. Add cargo to PATH if installed in user profile
+if exist "%USERPROFILE%\.cargo\bin\cargo.exe" (
+    set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+)
+
+:: 3. Check if Rust / Cargo is available (only needed to compile from source)
+where cargo >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [ERROR] Rust / Cargo is not found!
+    echo.
+    echo To build Horizon Launcher from source, Rust is required:
+    echo   winget install Rustlang.Rustup
+    echo.
+    echo Or download a precompiled release (.zip / .exe) from:
+    echo   https://github.com/YaroslavSamchuk/CleanHorizon/releases
+    echo.
+    pause
+    exit /b 1
 )
 
 :: Compile launcher in release mode
