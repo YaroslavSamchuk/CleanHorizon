@@ -262,7 +262,20 @@ impl Loading {
                     Err(TryRecvError::Empty) => break,
                     Err(TryRecvError::Disconnected) => {
                         if let Some(handle) = self.handle.take() {
-                            let _ = handle.join();
+                            if let Err(panic) = handle.join() {
+                                let msg = if let Some(s) = panic.downcast_ref::<&str>() {
+                                    (*s).to_string()
+                                } else if let Some(s) = panic.downcast_ref::<String>() {
+                                    s.clone()
+                                } else {
+                                    "unknown panic in resource loader".to_string()
+                                };
+                                log::error!("Horizon: resource-loader panicked: {msg}");
+                                return Err(format!("resource loader panicked: {msg}").into());
+                            }
+                        }
+                        if self.loaded.is_some() {
+                            break;
                         }
                         return Err("resource loader stopped before finishing".into());
                     }

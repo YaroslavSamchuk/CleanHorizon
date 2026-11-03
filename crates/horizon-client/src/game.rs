@@ -347,17 +347,43 @@ impl Options {
             )
         })
     }
+    fn default_resources_dir() -> PathBuf {
+        let vanilla = horizon_core::VANILLA_VERSION;
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(parent) = exe.parent() {
+                let sibling = parent.join("resources");
+                if sibling.join("horizon-resources.json").exists() {
+                    return sibling;
+                }
+                for ancestor in parent.ancestors().take(5) {
+                    let p = ancestor.join(".local/horizon-client").join(vanilla);
+                    if p.join("horizon-resources.json").exists() {
+                        return p;
+                    }
+                }
+            }
+        }
+        let local = std::path::Path::new(".local/horizon-client").join(vanilla);
+        if local.join("horizon-resources.json").exists() {
+            return local;
+        }
+        if let Some(appdata) = std::env::var_os("APPDATA") {
+            let versions = std::path::Path::new(&appdata).join("horizon-launcher").join("versions");
+            if let Ok(entries) = std::fs::read_dir(&versions) {
+                for entry in entries.flatten() {
+                    let p = entry.path().join(".local/horizon-client").join(vanilla);
+                    if p.join("horizon-resources.json").exists() {
+                        return p;
+                    }
+                }
+            }
+        }
+        local
+    }
+
     fn read() -> Result<Option<Self>> {
-        let sibling = std::env::current_exe()?
-            .parent()
-            .ok_or("missing executable directory")?
-            .join("resources");
         let mut o = Self {
-            resources: if sibling.join("horizon-resources.json").exists() {
-                sibling
-            } else {
-                std::path::Path::new(".local/horizon-client").join(horizon_core::VANILLA_VERSION)
-            },
+            resources: Self::default_resources_dir(),
             distance: 12,
             distance_override: None,
             seed: 0,
@@ -15387,6 +15413,10 @@ impl Loading {
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         if horizon_threads::stop_requests() > 0 {
             // No world is open yet: nothing to save.
+            event_loop.exit();
+            return;
+        }
+        if self.error.is_some() {
             event_loop.exit();
             return;
         }
