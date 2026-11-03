@@ -188,7 +188,7 @@ impl ModularGui {
                 Widget::Toggle {
                     id: "only_on_attack",
                     label: "Тільки при атаці (LMB)",
-                    value: true,
+                    value: false,
                 },
                 Widget::Choice {
                     id: "combat_mode",
@@ -209,9 +209,9 @@ impl ModularGui {
                 Widget::Slider {
                     id: "assist_range",
                     label: "Дистанція Assist (Ближній)",
-                    value: 3.4,
+                    value: 4.8,
                     min: 2.0,
-                    max: 6.0,
+                    max: 8.0,
                     step: 0.1,
                     suffix: " бл",
                 },
@@ -703,7 +703,12 @@ impl super::Game<'_> {
 
         // Підказка про збережену кнопку (внизу сайдбару)
         let key_label = self.settings.keys.get("key.mod_menu");
-        let hint = format!("[{}] Закрити", key_label);
+        let display_key = if key_label.is_empty() || key_label == "key.keyboard.unknown" {
+            "RShift"
+        } else {
+            key_label
+        };
+        let hint = format!("[{}] Закрити", display_key);
         batch.text_styled(
             &self.gui.atlas,
             &Text::literal(&hint),
@@ -912,7 +917,7 @@ impl super::Game<'_> {
         // 3. Відкриття / закриття модального меню
         let bound_key = self.settings.keys.get("key.mod_menu");
         let matches_bound = horizon_client::keybinds::key_name(key) == Some(bound_key);
-        let matches_fallback = key == KeyCode::Numpad1;
+        let matches_fallback = key == KeyCode::ShiftRight || key == KeyCode::Numpad1 || key == KeyCode::Insert;
 
         if (matches_bound || matches_fallback) && pressed {
             self.mod_gui.is_open = !self.mod_gui.is_open;
@@ -923,6 +928,7 @@ impl super::Game<'_> {
                 self.mod_gui.dragging_scrollbar = false;
                 self.mod_gui.listening_keybind = None;
                 self.update_cursor_capture();
+                self.mod_gui.save_config();
             }
             return true;
         }
@@ -933,6 +939,7 @@ impl super::Game<'_> {
             self.mod_gui.dragging_scrollbar = false;
             self.mod_gui.listening_keybind = None;
             self.update_cursor_capture();
+            self.mod_gui.save_config();
             return true;
         }
 
@@ -1043,6 +1050,7 @@ impl super::Game<'_> {
             self.mod_gui.dragging_scrollbar = false;
             self.mod_gui.listening_keybind = None;
             self.update_cursor_capture();
+            self.mod_gui.save_config();
             return;
         }
 

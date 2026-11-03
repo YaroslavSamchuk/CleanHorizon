@@ -41,7 +41,7 @@ pub const MAPPINGS: &[(&str, &str, &str)] = &[
     ("key.loadToolbarActivator", "key.keyboard.x", "creative"),
     ("key.advancements", "key.keyboard.l", "misc"),
     ("key.quickActions", "key.keyboard.g", "misc"),
-    ("key.mod_menu", "key.keyboard.keypad.1", "misc"),
+    ("key.mod_menu", "key.keyboard.right.shift", "misc"),
     ("key.debug.overlay", "key.keyboard.f3", "debug"),
     ("key.debug.modifier", "key.keyboard.f3", "debug"),
     ("key.hotbar.1", "key.keyboard.1", "inventory"),

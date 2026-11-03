@@ -34,9 +34,7 @@ pub struct RealisticAssistState {
     pub smoothed_screen_pos: Option<[f32; 2]>,
     /// Повідомлення статусу на HUD (текст, залишок секунд, колір)
     pub status_toast: Option<(String, f32, u32)>,
-    /// Накопичувач субпіксельного руху миші для 100% обходу античитів (GCD Bypass)
-    pub subpixel_mouse_x: f64,
-    pub subpixel_mouse_y: f64,
+
 }
 
 impl Default for RealisticAssistState {
@@ -55,9 +53,8 @@ impl Default for RealisticAssistState {
             esp_fps_accum: 0.0,
             raw_screen_pos: None,
             smoothed_screen_pos: None,
-            status_toast: None,
-            subpixel_mouse_x: 0.0,
-            subpixel_mouse_y: 0.0,
+            status_toast: Some(("Horizon Mod: Right Shift - Меню | B - Режим".into(), 6.0, rgba(203, 166, 247, 255))),
+
         }
     }
 }
@@ -74,32 +71,14 @@ pub fn wrap_deg(mut deg: f32) -> f32 {
 }
 
 impl Game<'_> {
-    /// Безпечний поворот камери через ванільну чергу миші (Обхід античитів Vulcan/Matrix/Polar)
+    /// Прямий та надійний поворот камери
     pub fn apply_legit_mouse_turn(&mut self, desired_dyaw: f32, desired_dpitch: f32) {
         if desired_dyaw.abs() < 1e-4 && desired_dpitch.abs() < 1e-4 {
             return;
         }
 
-        let look = self.look_options();
-        let (motion_x, motion_y) = horizon_client::mouse::motion_for_turn(
-            desired_dyaw as f64,
-            desired_dpitch as f64,
-            look,
-        );
-
-        // Накопичуємо субпіксельний рух миші
-        self.assist_state.subpixel_mouse_x += motion_x;
-        self.assist_state.subpixel_mouse_y += motion_y;
-
-        let send_x = self.assist_state.subpixel_mouse_x.trunc();
-        let send_y = self.assist_state.subpixel_mouse_y.trunc();
-
-        self.assist_state.subpixel_mouse_x -= send_x;
-        self.assist_state.subpixel_mouse_y -= send_y;
-
-        if send_x != 0.0 || send_y != 0.0 {
-            self.mouse.add_motion(send_x, send_y);
-        }
+        self.yaw += desired_dyaw;
+        self.pitch = (self.pitch + desired_dpitch).clamp(-90.0, 90.0);
     }
 
     /// Спільний кінематичний розрахунок повороту прицілу для Assist та Lock-On.
@@ -149,21 +128,18 @@ impl Game<'_> {
 
         // 2. М'яка зона переходу від мертвої зони (Ramp)
         let ramp_t = ((error_len - deadzone) / 3.0).clamp(0.0, 1.0);
-        let ramp = ramp_t * ramp_t * (3.0 - 2.0 * ramp_t);
+        let ramp = ramp_t.max(0.25);
 
         // 3. Затримка реакції (Reaction Delay)
         let reaction_ratio = (self.assist_state.target_tracked_time / reaction_delay).clamp(0.0, 1.0);
-        let reaction_ramp = reaction_ratio * reaction_ratio * (3.0 - 2.0 * reaction_ratio);
+        let reaction_ramp = (0.35 + 0.65 * reaction_ratio).clamp(0.35, 1.0);
 
         // 4. Плавність (Smoothness):
-        // При високій плавності (0.85 - 1.0) -> повільний, м'який, кінематографічний рух камери
-        // При середній плавності (0.5 - 0.6) -> збалансоване наведення
-        // При низькій плавності (0.1 - 0.2) -> швидкий чіткий ривок
-        let responsiveness = (1.08 - smoothness).clamp(0.08, 1.0);
-        let base_speed = responsiveness.powf(2.0) * 32.0 + 1.5;
+        let responsiveness = (1.10 - smoothness).clamp(0.1, 1.0);
+        let base_speed = responsiveness.powf(1.8) * 36.0 + 2.0;
 
         let tracking_speed = base_speed * ramp * reaction_ramp;
-        let step_factor = 1.0 - (-tracking_speed * dt).exp();
+        let step_factor = (1.0 - (-tracking_speed * dt).exp()).clamp(0.0, 1.0);
 
         // 5. Людський біомеханічний мікро-тремор (Tremor)
         let tremor = if tremor_amp > 0.001 {

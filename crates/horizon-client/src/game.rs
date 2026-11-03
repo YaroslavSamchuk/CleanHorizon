@@ -6100,8 +6100,8 @@ impl Game<'_> {
         self.draw_pad_cursor(&mut batch);
         if self.mod_gui.get_bool("combat_enabled") {
             self.draw_lock_on_reticle(&mut batch);
-            self.draw_modular_gui(&mut batch);
         }
+        self.draw_modular_gui(&mut batch);
         batch
     }
     fn hud_layers(&mut self, size: [u32; 2]) -> HudBatch {
@@ -12879,13 +12879,11 @@ impl ApplicationHandler for Game<'_> {
             }
             return;
         }
-        if self.mod_gui.get_bool("combat_enabled") {
-            if let WindowEvent::KeyboardInput { event: key_event, .. } = &event
-                && let PhysicalKey::Code(key) = key_event.physical_key
-            {
-                if self.handle_mod_gui_key(key, key_event.state == ElementState::Pressed) {
-                    return;
-                }
+        if let WindowEvent::KeyboardInput { event: key_event, .. } = &event
+            && let PhysicalKey::Code(key) = key_event.physical_key
+        {
+            if self.handle_mod_gui_key(key, key_event.state == ElementState::Pressed) {
+                return;
             }
         }
         // KeyboardHandler.keyPress: the debug keys come before the game's.

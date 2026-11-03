@@ -3228,9 +3228,14 @@ impl Launcher {
         if let Ok(existing) = std::fs::read_to_string(&path) {
             let mut found = false;
             for line in existing.lines() {
-                if line.trim().starts_with("combat_enabled:") {
+                let trimmed = line.trim();
+                if trimmed.starts_with("combat_enabled:") {
                     lines.push(format!("combat_enabled:{}", enabled));
                     found = true;
+                } else if trimmed.starts_with("switch_mode_hotkey:key.keyboard.tab") {
+                    lines.push("switch_mode_hotkey:key.keyboard.b".into());
+                } else if trimmed.starts_with("action_hotkey:key.mouse.4") {
+                    lines.push("action_hotkey:key.mouse.middle".into());
                 } else {
                     lines.push(line.to_string());
                 }
@@ -3240,24 +3245,24 @@ impl Launcher {
             }
         } else {
             lines.push(format!("combat_enabled:{}", enabled));
-            lines.push("only_on_attack:true".into());
-            lines.push("combat_mode:1".into());
-            lines.push("action_hotkey:key.mouse.4".into());
-            lines.push("switch_mode_hotkey:key.keyboard.tab".into());
-            lines.push("assist_range:3.10".into());
-            lines.push("lock_on_range:28.00".into());
-            lines.push("target_part:1".into());
-            lines.push("smoothness:0.65".into());
-            lines.push("deadzone:1.50".into());
-            lines.push("fov_cone:45.00".into());
+            lines.push("only_on_attack:false".into());
+            lines.push("combat_mode:0".into());
+            lines.push("action_hotkey:key.mouse.middle".into());
+            lines.push("switch_mode_hotkey:key.keyboard.b".into());
+            lines.push("assist_range:4.80".into());
+            lines.push("lock_on_range:32.00".into());
+            lines.push("target_part:0".into());
+            lines.push("smoothness:0.60".into());
+            lines.push("deadzone:1.20".into());
+            lines.push("fov_cone:75.00".into());
             lines.push("lead_pred:0.12".into());
             lines.push("reaction_delay:0.10".into());
             lines.push("check_walls:true".into());
-            lines.push("human_tremor:0.08".into());
+            lines.push("human_tremor:0.06".into());
             lines.push("target_filter:0".into());
             lines.push("show_lock_reticle:true".into());
             lines.push("reticle_style:2".into());
-            lines.push("esp_fps_limit:1".into());
+            lines.push("esp_fps_limit:0".into());
             lines.push("esp_smooth:0.50".into());
             lines.push("show_target_hp:true".into());
         }
