@@ -388,6 +388,26 @@ impl ModularGui {
 
     pub const CONFIG_FILE: &'static str = "horizon-combat-mod.txt";
 
+    pub fn config_path() -> std::path::PathBuf {
+        let direct = std::path::PathBuf::from(Self::CONFIG_FILE);
+        if direct.exists() {
+            return direct;
+        }
+        if let Some(appdata) = std::env::var_os("APPDATA") {
+            let p = std::path::Path::new(&appdata).join("horizon").join(Self::CONFIG_FILE);
+            if p.exists() {
+                return p;
+            }
+        }
+        if let Some(home) = std::env::var_os("HOME") {
+            let p = std::path::Path::new(&home).join(".local/share/horizon").join(Self::CONFIG_FILE);
+            if p.exists() {
+                return p;
+            }
+        }
+        direct
+    }
+
     pub fn save_config(&self) {
         let mut lines = Vec::new();
         for tab in &self.tabs {
@@ -408,11 +428,20 @@ impl ModularGui {
                 }
             }
         }
-        let _ = std::fs::write(Self::CONFIG_FILE, lines.join("\n"));
+        let content = lines.join("\n");
+        let path = Self::config_path();
+        let _ = std::fs::write(&path, &content);
+        if let Some(appdata) = std::env::var_os("APPDATA") {
+            let appdata_path = std::path::Path::new(&appdata).join("horizon").join(Self::CONFIG_FILE);
+            if appdata_path != path {
+                let _ = std::fs::write(appdata_path, &content);
+            }
+        }
     }
 
     pub fn load_config(&mut self) {
-        let Ok(content) = std::fs::read_to_string(Self::CONFIG_FILE) else { return };
+        let path = Self::config_path();
+        let Ok(content) = std::fs::read_to_string(&path) else { return };
         for line in content.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {

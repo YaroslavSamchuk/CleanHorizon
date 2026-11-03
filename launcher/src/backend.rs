@@ -2253,10 +2253,49 @@ pub fn client_command(tag: &str) -> Command {
     cmd
 }
 
+/// Looks for a locally compiled modified client binary (target/fast, target/release, etc.).
+fn custom_client_path() -> Option<PathBuf> {
+    // 1. Direct workspace targets relative to current working directory
+    for profile in ["fast", "release", "debug"] {
+        let candidate = Path::new("target").join(profile).join(CLIENT);
+        if candidate.is_file() {
+            if let Ok(abs) = candidate.canonicalize() {
+                return Some(abs);
+            }
+            return Some(candidate);
+        }
+    }
+    // 2. Relative to launcher executable (e.g. launcher/target/debug/horizon-launcher.exe -> target/fast/...)
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            let direct = parent.join(CLIENT);
+            if direct.is_file() {
+                return Some(direct);
+            }
+            for ancestor in parent.ancestors().take(6) {
+                for profile in ["fast", "release", "debug"] {
+                    let candidate = ancestor.join("target").join(profile).join(CLIENT);
+                    if candidate.is_file() {
+                        return Some(candidate);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 /// The game's program: on macOS the one inside the version's Horizon.app, so the Dock and Cmd+Tab
 /// show Horizon's name and icon (game_app.rs); the bare binary elsewhere, or if that fails.
 fn client_program(tag: &str) -> PathBuf {
     let dir = version_dir(tag);
+    if let Some(custom) = custom_client_path() {
+        let target_in_ver = dir.join(CLIENT);
+        if target_in_ver.is_file() {
+            let _ = fs::copy(&custom, &target_in_ver);
+        }
+        return custom;
+    }
     #[cfg(target_os = "macos")]
     match crate::game_app::ensure(&dir) {
         Ok(program) => return program,
