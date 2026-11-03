@@ -2256,7 +2256,7 @@ pub fn client_command(tag: &str) -> Command {
 /// Looks for a locally compiled modified client binary (target/fast, target/release, etc.).
 fn custom_client_path() -> Option<PathBuf> {
     // 1. Direct workspace targets relative to current working directory
-    for profile in ["fast", "release", "debug"] {
+    for profile in ["release", "fast", "debug"] {
         let candidate = Path::new("target").join(profile).join(CLIENT);
         if candidate.is_file() {
             if let Ok(abs) = candidate.canonicalize() {
@@ -2273,7 +2273,7 @@ fn custom_client_path() -> Option<PathBuf> {
                 return Some(direct);
             }
             for ancestor in parent.ancestors().take(6) {
-                for profile in ["fast", "release", "debug"] {
+                for profile in ["release", "fast", "debug"] {
                     let candidate = ancestor.join("target").join(profile).join(CLIENT);
                     if candidate.is_file() {
                         return Some(candidate);
