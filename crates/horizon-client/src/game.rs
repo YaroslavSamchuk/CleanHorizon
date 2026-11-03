@@ -110,11 +110,13 @@ mod minecarts;
 mod mob_blocks;
 mod mob_gear;
 mod mob_sounds;
+mod mod_gui;
 mod mod_input;
 #[cfg(feature = "mods")]
 mod mod_panel;
 mod mod_render;
 mod mods;
+mod realistic_assist;
 mod mount_menu;
 mod mounts;
 mod moved_extras;
@@ -1829,6 +1831,8 @@ struct Game<'a> {
     extras: extras::ExtrasState,
     /// Horizon mods (`game/mods.rs`), none running unless turned on.
     mods: mods::ModsState,
+    pub(super) mod_gui: mod_gui::ModularGui,
+    pub(super) assist_state: realistic_assist::RealisticAssistState,
     /// Every item and recipe, for mods (`game/native_recipes.rs`), made once.
     recipe_tables: native_recipes::RecipeTables,
     /// The item panel beside container screens (`game/native_panel.rs`).
@@ -2150,7 +2154,7 @@ impl Game<'_> {
         self.clip_ray(origin, dir, self.reach())
     }
     /// The first block outline hit within `reach` along the unit `dir`.
-    fn clip_ray(&self, origin: [f64; 3], dir: [f64; 3], reach: f64) -> Option<Hit> {
+    pub(super) fn clip_ray(&self, origin: [f64; 3], dir: [f64; 3], reach: f64) -> Option<Hit> {
         let mut pos = origin.map(|v| v.floor() as i32);
         let step = dir.map(|d| if d > 0.0 { 1 } else { -1 });
         let delta = dir.map(|d| {
@@ -5806,7 +5810,7 @@ impl Game<'_> {
     /// already released does nothing, so moving from screen to screen keeps
     /// the cursor where it is. Like GLFW's `glfwSetCursorPos`, nothing warps
     /// while the window is unfocused (losing focus releases the pointer).
-    fn capture(&mut self, capture: bool) {
+    pub(super) fn capture(&mut self, capture: bool) {
         // A guest's action (`as_guest`) opens and closes screens on the
         // guest's own client: the window's pointer stays the host's (#687).
         if self.lan_acting.is_some() {
@@ -6068,6 +6072,10 @@ impl Game<'_> {
         self.frame_graph
             .draw(self.settings.horizon.overlay, &mut batch, &self.gui.atlas);
         self.draw_pad_cursor(&mut batch);
+        if self.mod_gui.get_bool("combat_enabled") {
+            self.draw_lock_on_reticle(&mut batch);
+            self.draw_modular_gui(&mut batch);
+        }
         batch
     }
     fn hud_layers(&mut self, size: [u32; 2]) -> HudBatch {
@@ -12845,6 +12853,15 @@ impl ApplicationHandler for Game<'_> {
             }
             return;
         }
+        if self.mod_gui.get_bool("combat_enabled") {
+            if let WindowEvent::KeyboardInput { event: key_event, .. } = &event
+                && let PhysicalKey::Code(key) = key_event.physical_key
+            {
+                if self.handle_mod_gui_key(key, key_event.state == ElementState::Pressed) {
+                    return;
+                }
+            }
+        }
         // KeyboardHandler.keyPress: the debug keys come before the game's.
         if let WindowEvent::KeyboardInput {
             event: key_event, ..
@@ -12940,6 +12957,7 @@ impl ApplicationHandler for Game<'_> {
         let result: Result<()> = (|| {
             match event {
                 WindowEvent::CloseRequested => {
+                    self.capture(false);
                     self.begin_closing_save(true)?;
                 }
                 WindowEvent::Resized(size) => {
@@ -12974,6 +12992,9 @@ impl ApplicationHandler for Game<'_> {
                     if let Some(r) = &self.renderer {
                         let b = HudBatch::new([r.config.width, r.config.height]);
                         self.cursor = (position.x as f32 / b.scale, position.y as f32 / b.scale);
+                        if self.mod_gui.is_open {
+                            self.handle_mod_gui_cursor_move(self.cursor.0, self.cursor.1);
+                        }
                         if self.screen == Screen::Advancements {
                             self.advancements_drag();
                         }
@@ -13019,6 +13040,9 @@ impl ApplicationHandler for Game<'_> {
                         }) * wheel_sensitivity
                     };
                     let d = scaled(raw_y) as f32;
+                    if self.handle_mod_gui_scroll(d) {
+                        return Ok(());
+                    }
                     if self.dialog_open() {
                         self.dialog_scroll(d);
                     } else if self.code_of_conduct.is_some() {
@@ -13092,6 +13116,9 @@ impl ApplicationHandler for Game<'_> {
                     if self.screen == Screen::Advancements {
                         self.advancements_scroll(scaled(raw_x) as f32, d);
                     }
+                }
+                WindowEvent::MouseInput { state, button, .. } if self.mod_gui.is_open => {
+                    self.handle_mod_gui_mouse_click(button, state == ElementState::Pressed);
                 }
                 WindowEvent::MouseInput { state, button, .. } if self.link_prompt.is_some() => {
                     if state == ElementState::Pressed && button == MouseButton::Left {
@@ -13233,6 +13260,9 @@ impl ApplicationHandler for Game<'_> {
                         Screen::Playing => {
                             if pressed && !self.captured {
                                 self.capture(true);
+                                return Ok(());
+                            }
+                            if self.handle_mod_gui_mouse_press(button, pressed) {
                                 return Ok(());
                             }
                             self.extras_mouse(button, pressed);
@@ -14198,6 +14228,8 @@ impl<'a> Game<'a> {
             frame_graph: Default::default(),
             extras: Default::default(),
             mods: Default::default(),
+            mod_gui: mod_gui::ModularGui::new(),
+            assist_state: realistic_assist::RealisticAssistState::default(),
             recipe_tables: Default::default(),
             panel: Default::default(),
             native_shaders: Default::default(),
@@ -15228,6 +15260,7 @@ fn leave_fullscreen_after(
 
 fn run_event_loop(mut game: Game<'_>) -> Result<()> {
     let result = EventLoop::new()?.run_app(&mut game);
+    game.capture(false);
     leave_fullscreen_after(&result, &mut game.settings);
     result?;
     horizon_client::discord_presence::stop();

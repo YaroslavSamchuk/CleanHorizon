@@ -34,6 +34,7 @@ impl Game<'_> {
             return Ok(());
         }
         if self.title.is_some() || self.saved_for_exit {
+            self.capture(false);
             // A quit from the title still needs the event loop to finish.
             self.pending_save = Some(ClosingSave {
                 quit,

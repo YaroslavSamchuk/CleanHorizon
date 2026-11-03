@@ -202,7 +202,7 @@ pub fn url_of(file: &PackFile, cache: &Cache) -> Option<String> {
 }
 
 /// Downloads `url` to `dest`, kept only if its SHA-1 is `sha1`.
-fn download(url: &str, sha1: Option<&str>, dest: &Path) -> Result<(), String> {
+pub(crate) fn download(url: &str, sha1: Option<&str>, dest: &Path) -> Result<(), String> {
     let response = crate::net::agent(url)
         .get(url)
         .set("User-Agent", modrinth::AGENT)
